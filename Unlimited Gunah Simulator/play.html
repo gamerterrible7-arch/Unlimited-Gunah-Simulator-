@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Unlimited Gunah Simulator</title>
+    <link rel="stylesheet" href="play.css">
+</head>
+<body>
+    <main class="game-shell">
+        <section id="mode-screen" class="screen" aria-labelledby="mode-heading">
+            <p class="eyebrow">Unlimited Gunah Simulator</p>
+            <h1 id="mode-heading">Choose a game mode</h1>
+            <p class="intro">Pick a mode, answer the question, and watch your count.</p>
+            <div class="mode-grid">
+                <button class="mode-card" type="button" data-mode="money">
+                    <img src="1.jpeg" alt="">
+                    <span>Baki ka rupee kaha gaye?</span>
+                </button>
+                <button class="mode-card" type="button" data-mode="family">
+                    <img src="2.jpeg" alt="">
+                    <span>Baap ke galat karmo ka karz</span>
+                </button>
+                <button class="mode-card" type="button" data-mode="challenge">
+                    <img src="3.jpeg" alt="">
+                    <span>Jeet jau sab vasool krlunga.</span>
+                </button>
+                <button class="mode-card" type="button" data-mode="boss">
+                    <img src="homepage.jpeg" alt="">
+                    <span>Tuh keh ria hai tuh baith ria hu</span>
+                </button>
+            </div>
+        </section>
+
+        <section id="quiz-screen" class="screen" aria-labelledby="question" hidden>
+            <div class="quiz-topbar">
+                <button id="back-button" class="text-button" type="button">Choose a mode</button>
+                <p id="score" class="score" aria-live="polite">Gunah count: 0</p>
+            </div>
+            <p id="active-mode" class="eyebrow"></p>
+            <p id="progress" class="progress"></p>
+            <h1 id="question" tabindex="-1"></h1>
+            <div id="answers" class="answer-grid"></div>
+            <p id="feedback" class="feedback" role="status" aria-live="polite"></p>
+            <p id="round-result" class="round-result" role="status" aria-live="polite" hidden></p>
+            <button id="next-button" class="next-button" type="button" hidden>Next question</button>
+        </section>
+    </main>
+    <footer class="site-footer">Game made by Naik CEO Mubashir Ahmad</footer>
+
+    <script>
+        const questions = {
+            money: [
+                { prompt: "Chuti kiu chahie?", answers: ["Bijli ka bill bharna tha", "Sahab Dargah jana tha", "Cricket match dekhna tha", "Ghar ki safai karni thi"], correct: 1 },
+                { prompt: "Kitne Rupee Ki Chadar Chadhani Thi?", answers: ["20 rupees", "30 rupees", "40 rupees", "500 rupees"], correct: 3 },
+                { prompt: "Chadar Kiu Chadhani Ti?", answers: ["Hath Theek Hojaye", "Deep Cleaning Hojaye", "Gunah Count Badh Jaye", "Aura+ Hojaye"], correct: 0 },
+                { prompt: "Baki Ka Rupee Kaha Gaye?", answers: ["Jeb Mai", "Dargah", "Bikhari", "Riiifaqat"], correct: 0 }
+            ],
+            family: [
+                { prompt: "Beti Kidhar Ko Au?", answers: ["Idhar", "Udhar", "Kundian", "NiggaflexGlobal"], correct: 0 },
+                { prompt: "Aree Kaha Jarhe/Rahi Ho?", answers: ["Madam", "Chacha", "Rafaqat", "Nomi"], correct: 0 },
+                { prompt: "Chacha Ap Itna roo Kiu rae hain?", answers: ["Chacha Ki Jawani", "Ishaan Man Ko Dekh Kar asoo agye", "Waise Hi", "Tujh Sa Matlab"], correct: 0 }
+            ],
+            challenge: [
+                { prompt: "Neeta Ji?", answers: ["MArja Musali", "Ja o Ja", "ZIndaBad", "Dhur DHur"], correct: 2 },
+                { prompt: "Vote Kisko Dunga", answers: ["Apko", "Rifaqat Ko", "Kisi Ko Nai", "Gunah Agent Javed"], correct: 0 },
+                { prompt: "Aik Baar Jeet Jau", answers: ["SAb Ka Bhala Krunga", "Aura Farming Krunga", "Gunah Count Increase Krunga", "SAb Wasool Krlunga"], correct: 3 }
+            ],
+            boss: [
+                { prompt: "YA tuti Hui Kursi pa?", answers: ["Baithunga Mai?", "Sounga Mai?", "NAchunga Mai?", "Marunga Mai"], correct: 0 },
+                { prompt: "Beta YAhi hai Hamara GAreeb Khana", answers: ["Mai KAunsa isko TAj Mahal BAta ria hu", "Haan Tuh Iss GAreeb Khane ko Ham Kaunsa Mahal Bata rae hain", "Nai Nai NIggaflex ka Main Office hai", "Todwa Do Gareeb Khana"], correct: 1 },
+                { prompt: "Areey Bhai JAan", answers: ["Marja Musali Ishaan Man", "Mai Nai Baithunga", "Khud Baith La", "Areey Yaar Tuh Keh Ria Hai Tuh Baith Ria Hun"], correct: 3 }
+            ]
+        };
+
+        const QUESTIONS_PER_ROUND = 3;
+        const modeNames = {
+            money: "Baki ka rupee kaha gaye?",
+            family: "Baap ke galat karmo ka karz",
+            challenge: "Jeet jau sab vasool krlunga.",
+            boss: "Tuh keh ria hai tuh baith ria hu"
+        };
+        const modeScreen = document.querySelector("#mode-screen");
+        const quizScreen = document.querySelector("#quiz-screen");
+        const activeMode = document.querySelector("#active-mode");
+        const progressDisplay = document.querySelector("#progress");
+        const questionHeading = document.querySelector("#question");
+        const answersContainer = document.querySelector("#answers");
+        const feedback = document.querySelector("#feedback");
+        const roundResult = document.querySelector("#round-result");
+        const scoreDisplay = document.querySelector("#score");
+        const nextButton = document.querySelector("#next-button");
+        let gunahCount = 0;
+        let selectedMode = "";
+        let answeredCount = 0;
+        let askedQuestionIndices = new Set();
+
+        function startRound(mode) {
+            selectedMode = mode;
+            answeredCount = 0;
+            askedQuestionIndices = new Set();
+            gunahCount = 0;
+            scoreDisplay.textContent = `Gunah count: ${gunahCount}`;
+            activeMode.textContent = modeNames[selectedMode];
+            modeScreen.hidden = true;
+            quizScreen.hidden = false;
+            showQuestion();
+        }
+
+        function showQuestion() {
+            const modeQuestions = questions[selectedMode];
+            const availableIndices = modeQuestions
+                .map((question, index) => index)
+                .filter((index) => !askedQuestionIndices.has(index));
+            const questionIndex = availableIndices[Math.floor(Math.random() * availableIndices.length)];
+            askedQuestionIndices.add(questionIndex);
+            const question = modeQuestions[questionIndex];
+
+            progressDisplay.textContent = `Question ${answeredCount + 1} of ${QUESTIONS_PER_ROUND}`;
+            questionHeading.textContent = question.prompt;
+            answersContainer.replaceChildren();
+            feedback.textContent = "";
+            feedback.dataset.state = "";
+            roundResult.hidden = true;
+            nextButton.hidden = true;
+
+            question.answers.forEach((answer, index) => {
+                const answerButton = document.createElement("button");
+                answerButton.className = "answer-button";
+                answerButton.type = "button";
+                answerButton.textContent = answer;
+                answerButton.addEventListener("click", () => {
+                    answersContainer.querySelectorAll("button").forEach((button) => {
+                        button.disabled = true;
+                    });
+                    answeredCount += 1;
+
+                    if (index === question.correct) {
+                        gunahCount += 10;
+                        feedback.textContent = "Correct! +10 gunah.";
+                        feedback.dataset.state = "correct";
+                    } else {
+                        gunahCount -= 20;
+                        feedback.textContent = `Wrong! -20 gunah. The correct answer was ${question.answers[question.correct]}.`;
+                        feedback.dataset.state = "wrong";
+                    }
+
+                    scoreDisplay.textContent = `Gunah count: ${gunahCount}`;
+                    if (answeredCount === QUESTIONS_PER_ROUND) {
+                        roundResult.textContent = gunahCount > 0 ? "Level finished!" : "Mission failed.";
+                        roundResult.dataset.state = gunahCount > 0 ? "won" : "failed";
+                        roundResult.hidden = false;
+                        nextButton.textContent = "Play this mode again";
+                    } else {
+                        nextButton.textContent = "Next question";
+                    }
+                    nextButton.hidden = false;
+                    nextButton.focus();
+                });
+                answersContainer.append(answerButton);
+            });
+            questionHeading.focus();
+        }
+
+        document.querySelectorAll(".mode-card").forEach((modeButton) => {
+            modeButton.addEventListener("click", () => {
+                startRound(modeButton.dataset.mode);
+            });
+        });
+
+        nextButton.addEventListener("click", () => {
+            if (answeredCount === QUESTIONS_PER_ROUND) {
+                startRound(selectedMode);
+            } else {
+                showQuestion();
+            }
+        });
+        document.querySelector("#back-button").addEventListener("click", () => {
+            quizScreen.hidden = true;
+            modeScreen.hidden = false;
+            modeScreen.querySelector(".mode-card").focus();
+        });
+    </script>
+</body>
+</html>
